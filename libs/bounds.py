@@ -2,8 +2,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-def logmeanexp_diag(x, device='cuda'):
+def logmeanexp_diag(x, device=None):
     """Compute logmeanexp over the diagonal elements of x."""
+    if device is None:
+        device = x.device
     batch_size = x.size(0)
 
     logsumexp = torch.logsumexp(x.diag(), dim=(0,))
@@ -11,7 +13,9 @@ def logmeanexp_diag(x, device='cuda'):
 
     return logsumexp - torch.log(torch.tensor(num_elem).float()).to(device)
 
-def logmeanexp_nodiag(x, dim=None, device='cuda'):
+def logmeanexp_nodiag(x, dim=None, device=None):
+    if device is None:
+        device = x.device
     batch_size = x.size(0)
     if dim is None:
         dim = (0, 1)
@@ -89,8 +93,9 @@ def mine_lower_bound(f, buffer=None, momentum=0.9):
     """
     MINE lower bound based on DV inequality.
     """
+    device = f.device
     if buffer is None:
-        buffer = torch.tensor(1.0).cuda()
+        buffer = torch.tensor(1.0).to(device)
     first_term = f.diag().mean()
 
     buffer_update = logmeanexp_nodiag(f).exp()
@@ -141,7 +146,9 @@ def estimate_mutual_information(estimator, x, y, critic_fn,
   Returns:
     scalar estimate of mutual information
     """
-    x, y = x.cuda(), y.cuda()
+    # Ensure tensors are on the same device as the critic
+    device = next(critic_fn.parameters()).device if hasattr(critic_fn, 'parameters') else x.device
+    x, y = x.to(device), y.to(device)
     scores = critic_fn(x, y)
     if baseline_fn is not None:
         # Some baselines' output is (batch_size, 1) which we remove here.
