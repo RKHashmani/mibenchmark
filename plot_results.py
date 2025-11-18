@@ -7,7 +7,7 @@ import glob
 parser = argparse.ArgumentParser()
 parser.add_argument("--results_dir", type=str, default="results/custom_benchmark", 
                     help="Directory containing benchmark results")
-parser.add_argument("--output_file", type=str, default="results/custom_benchmark/mi_comparison.pdf",
+parser.add_argument("--output_file", type=str, default="results/custom_benchmark/mi_comparison_nats.pdf",
                     help="Output file for the plot")
 parser.add_argument("--estimators", type=str, nargs="+", default=None,
                     help="List of estimators to plot (default: all)")
@@ -149,8 +149,8 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         correlation = np.corrcoef(all_true_mi, estimates)[0, 1]
         rmse = np.sqrt(np.mean((all_true_mi - estimates)**2))
         
-        ax.set_xlabel('True MI (bits)', fontsize=10)
-        ax.set_ylabel('Estimated MI (bits)', fontsize=10)
+        ax.set_xlabel('True MI (nats)', fontsize=10)
+        ax.set_ylabel('Estimated MI (nats)', fontsize=10)
         ax.set_title(f'{estimator_name}\nCorr: {correlation:.3f}, RMSE: {rmse:.4f}', fontsize=10)
         ax.legend(fontsize=8)
         ax.grid(True, alpha=0.3)
@@ -175,9 +175,9 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     max_val = max(np.max(all_true_mi), np.max([np.max(est) for est in all_estimates.values()]))
     ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, linewidth=2, label='Perfect estimation')
     
-    ax2.set_xlabel('True MI (bits)', fontsize=12)
-    ax2.set_ylabel('Estimated MI (bits)', fontsize=12)
-    ax2.set_title('True MI vs Estimated MI - All Estimators', fontsize=14)
+    ax2.set_xlabel('True MI (nats)', fontsize=12)
+    ax2.set_ylabel('Estimated MI (nats)', fontsize=12)
+    ax2.set_title('True MI vs Estimated MI - All Estimators (Nats)', fontsize=14)
     ax2.legend(fontsize=10, loc='best')
     ax2.grid(True, alpha=0.3)
     
