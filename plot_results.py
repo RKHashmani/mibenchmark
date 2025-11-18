@@ -131,6 +131,19 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     for estimator_name in all_estimates:
         all_estimates[estimator_name] = np.array(all_estimates[estimator_name])[sorted_indices]
     
+    # Find global range for both axes (same as combined plot)
+    # Calculate min and max across all true MI and all estimates
+    all_values = [all_true_mi]
+    for estimates in all_estimates.values():
+        all_values.append(estimates)
+    all_values_flat = np.concatenate(all_values)
+    global_min = np.min(all_values_flat)
+    global_max = np.max(all_values_flat)
+    # Add a small margin (5% on each side)
+    margin = (global_max - global_min) * 0.05
+    global_min -= margin
+    global_max += margin
+    
     # Create plot
     n_estimators = len(all_estimates)
     n_cols = 3
@@ -150,10 +163,13 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         # Scatter plot
         ax.scatter(all_true_mi, estimates, alpha=0.6, s=50, color=colors[idx], label=estimator_name)
         
-        # Perfect estimation line (y=x)
-        min_val = min(np.min(all_true_mi), np.min(estimates))
-        max_val = max(np.max(all_true_mi), np.max(estimates))
-        ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect estimation')
+        # Perfect estimation line (y=x) - use global range
+        ax.plot([global_min, global_max], [global_min, global_max], 'r--', alpha=0.5, label='Perfect estimation')
+        
+        # Set same axis limits for both x and y (matching combined plot)
+        ax.set_xlim(global_min, global_max)
+        ax.set_ylim(global_min, global_max)
+        ax.set_aspect('equal', adjustable='box')  # Make axes equal scale
         
         # Calculate and display correlation
         correlation = np.corrcoef(all_true_mi, estimates)[0, 1]
