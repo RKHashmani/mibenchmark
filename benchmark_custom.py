@@ -20,6 +20,8 @@ parser.add_argument("--savepath", type=str, default="results/custom_benchmark")
 parser.add_argument("--dr", type=int, default=3072, help="representation dimension (3*32*32=3072 for CIFAR-like images)")
 
 parser.add_argument("--output_scale", type=str, default="bit", choices=["bit", "nat"])
+parser.add_argument("--input_scale", type=str, default="bit", choices=["bit", "nat"], 
+                    help="Scale of true MI values in your dataset (bit or nat)")
 
 parser.add_argument("--critic_type", type=str, default="joint", choices=["joint", "separable", "bilinear", "inner"])
 parser.add_argument("--critic_depth", type=int, default=2)
@@ -104,10 +106,23 @@ def main():
     
     # Process each dataset
     for subdir_name, dataset_dict in sorted(all_datasets.items()):
-        true_mi = dataset_dict['true_mi']
+        true_mi_raw = dataset_dict['true_mi']  # Raw value from dataset
+        
+        # Convert true_mi to the scale we'll use for comparison
+        if args.input_scale == "nat" and args.output_scale == "bit":
+            # Input is nats, output is bits - convert
+            true_mi = nat2bit(true_mi_raw)
+        elif args.input_scale == "bit" and args.output_scale == "nat":
+            # Input is bits, output is nats - convert
+            true_mi = bit2nat(true_mi_raw)
+        else:
+            # Same scale, no conversion needed
+            true_mi = true_mi_raw
+        
         log.info(f'\n{"="*60}')
         log.info(f'Processing dataset: {subdir_name}')
-        log.info(f'True MI: {true_mi:.4f} {"bits" if args.output_scale == "bit" else "nats"}')
+        log.info(f'True MI (raw from file): {true_mi_raw:.4f} {args.input_scale}')
+        log.info(f'True MI (for comparison): {true_mi:.4f} {args.output_scale}')
         log.info(f'{"="*60}')
         
         dataset_results = {}
@@ -201,11 +216,8 @@ def main():
                 mi_val = mi.detach().cpu().numpy()
                 if args.output_scale == "bit":
                     mi_val = nat2bit(mi_val)
-                    # Assume true_mi is already in bits if output_scale is bit
-                    true_mi_display = true_mi
-                else:
-                    # Convert true_mi from bits to nats if needed
-                    true_mi_display = bit2nat(true_mi)
+                # true_mi is already in the correct scale from the conversion above
+                true_mi_display = true_mi
                 
                 estimates.append(mi_val)
                 
