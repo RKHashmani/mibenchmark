@@ -159,7 +159,7 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         correlation = np.corrcoef(all_true_mi, estimates)[0, 1]
         rmse = np.sqrt(np.mean((all_true_mi - estimates)**2))
         
-        ax.set_xlabel('Theoretical MI')
+        ax.set_xlabel('Ground Truth MI')
         ax.set_ylabel('Estimated MI')
         ax.set_title(f'{estimator_name}\nCorrelation: {correlation:.3f}, RMSE: {rmse:.4f}')
         ax.legend()
@@ -170,8 +170,13 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         axes[idx].axis('off')
     
     plt.tight_layout()
-    plt.savefig(output_file, dpi=300, bbox_inches='tight')
+    # Save as PDF
+    plt.savefig(output_file, dpi=600, bbox_inches='tight')
     print(f"Plot saved to {output_file}")
+    # Save as PNG
+    png_file = output_file.replace('.pdf', '.png')
+    plt.savefig(png_file, dpi=600, bbox_inches='tight')
+    print(f"Plot saved to {png_file}")
     
     # Also create a combined plot
     fig2, ax2 = plt.subplots(1, 1, figsize=(10, 8))
@@ -185,16 +190,21 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     max_val = max(np.max(all_true_mi), np.max([np.max(est) for est in all_estimates.values()]))
     ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, linewidth=2, label='Perfect estimation')
     
-    ax2.set_xlabel('Theoretical MI')
+    ax2.set_xlabel('Ground Truth MI')
     ax2.set_ylabel('Estimated MI')
-    ax2.set_title('Theoretical vs Estimated Mutual Information')
+    ax2.set_title('Ground Truth vs Estimated Mutual Information')
     ax2.legend(loc='best')
     ax2.grid(True, alpha=0.3)
     
     combined_output = output_file.replace('.pdf', '_combined.pdf')
     plt.tight_layout()
-    plt.savefig(combined_output, dpi=300, bbox_inches='tight')
+    # Save as PDF
+    plt.savefig(combined_output, dpi=600, bbox_inches='tight')
     print(f"Combined plot saved to {combined_output}")
+    # Save as PNG
+    combined_png = combined_output.replace('.pdf', '.png')
+    plt.savefig(combined_png, dpi=600, bbox_inches='tight')
+    print(f"Combined plot saved to {combined_png}")
     
     # Print summary statistics
     print("\n" + "="*60)
