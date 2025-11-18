@@ -19,8 +19,9 @@ parser.add_argument("--savepath", type=str, default="results/custom_benchmark")
 
 parser.add_argument("--dr", type=int, default=3072, help="representation dimension (3*32*32=3072 for CIFAR-like images)")
 
-parser.add_argument("--output_scale", type=str, default="bit", choices=["bit", "nat"])
-parser.add_argument("--input_scale", type=str, default="bit", choices=["bit", "nat"], 
+parser.add_argument("--output_scale", type=str, default="nat", choices=["bit", "nat"],
+                    help="Scale for output MI estimates (bit or nat)")
+parser.add_argument("--input_scale", type=str, default="nat", choices=["bit", "nat"], 
                     help="Scale of true MI values in your dataset (bit or nat)")
 
 parser.add_argument("--critic_type", type=str, default="joint", choices=["joint", "separable", "bilinear", "inner"])
@@ -67,7 +68,6 @@ def main():
     log.info(f'Loading datasets from {args.dataset_dir}')
     custom_dataset = CustomDataset(args.dataset_dir)
     all_datasets = custom_dataset.get_all_datasets()
-    all_true_mi = custom_dataset.get_all_true_mi()
     
     if len(all_datasets) == 0:
         log.error("No datasets found!")
@@ -214,6 +214,7 @@ def main():
                 
                 # Convert to output scale
                 mi_val = mi.detach().cpu().numpy()
+                # Estimators work in nats internally, so only convert if output is bits
                 if args.output_scale == "bit":
                     mi_val = nat2bit(mi_val)
                 # true_mi is already in the correct scale from the conversion above
