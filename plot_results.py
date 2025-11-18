@@ -1,8 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 import os
 import argparse
-import glob
+
+# Set matplotlib font sizes
+matplotlib.rcParams.update({
+    "font.size": 12,            # Default text size
+    "axes.titlesize": 18,       # Title font size
+    "axes.labelsize": 18,       # X/Y label font size
+    "legend.fontsize": 12,      # Legend font size
+    "xtick.labelsize": 14,      # X tick labels
+    "ytick.labelsize": 14,      # Y tick labels
+})
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--results_dir", type=str, default="results/custom_benchmark", 
@@ -149,10 +159,10 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         correlation = np.corrcoef(all_true_mi, estimates)[0, 1]
         rmse = np.sqrt(np.mean((all_true_mi - estimates)**2))
         
-        ax.set_xlabel('Theoretical MI', fontsize=10)
-        ax.set_ylabel('Estimated MI', fontsize=10)
-        ax.set_title(f'{estimator_name}\nCorrelation: {correlation:.3f}, RMSE: {rmse:.4f}', fontsize=10)
-        ax.legend(fontsize=8)
+        ax.set_xlabel('Theoretical MI')
+        ax.set_ylabel('Estimated MI')
+        ax.set_title(f'{estimator_name}\nCorrelation: {correlation:.3f}, RMSE: {rmse:.4f}')
+        ax.legend()
         ax.grid(True, alpha=0.3)
     
     # Hide unused subplots
@@ -175,10 +185,10 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     max_val = max(np.max(all_true_mi), np.max([np.max(est) for est in all_estimates.values()]))
     ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, linewidth=2, label='Perfect estimation')
     
-    ax2.set_xlabel('Theoretical MI', fontsize=12)
-    ax2.set_ylabel('Estimated MI', fontsize=12)
-    ax2.set_title('Theoretical vs Estimated Mutual Information', fontsize=14)
-    ax2.legend(fontsize=10, loc='best')
+    ax2.set_xlabel('Theoretical MI')
+    ax2.set_ylabel('Estimated MI')
+    ax2.set_title('Theoretical vs Estimated Mutual Information')
+    ax2.legend(loc='best')
     ax2.grid(True, alpha=0.3)
     
     combined_output = output_file.replace('.pdf', '_combined.pdf')
