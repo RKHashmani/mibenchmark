@@ -23,6 +23,8 @@ parser.add_argument("--output_scale", type=str, default="nat", choices=["bit", "
                     help="Scale for output MI estimates (bit or nat)")
 parser.add_argument("--input_scale", type=str, default="nat", choices=["bit", "nat"], 
                     help="Scale of true MI values in your dataset (bit or nat)")
+parser.add_argument("--data_key", type=str, default="X", choices=["X", "Noise"],
+                    help="Key to use from npz file: 'X' (original images) or 'Noise' (latent space)")
 
 parser.add_argument("--critic_type", type=str, default="joint", choices=["joint", "separable", "bilinear", "inner"])
 parser.add_argument("--critic_depth", type=int, default=2)
@@ -65,8 +67,8 @@ def main():
     log.info(f'Using device: {device}')
     
     # Load custom datasets
-    log.info(f'Loading datasets from {args.dataset_dir}')
-    custom_dataset = CustomDataset(args.dataset_dir)
+    log.info(f'Loading datasets from {args.dataset_dir} using data_key: {args.data_key}')
+    custom_dataset = CustomDataset(args.dataset_dir, data_key=args.data_key)
     all_datasets = custom_dataset.get_all_datasets()
     
     if len(all_datasets) == 0:

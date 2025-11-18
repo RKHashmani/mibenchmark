@@ -6,12 +6,13 @@ import glob
 class CustomDataset:
     """Custom dataset loader for npz files with paired images and known MI values."""
     
-    def __init__(self, dataset_dir):
+    def __init__(self, dataset_dir, data_key='X'):
         """
         Initialize custom dataset loader.
         
         Args:
             dataset_dir: Path to directory containing subdirectories with npz files
+            data_key: Key to use from npz file ('X' or 'Noise')
         """
         self.dataset_dir = dataset_dir
         self.datasets = {}
@@ -30,20 +31,21 @@ class CustomDataset:
                 npz_path = npz_files[0]
                 data = np.load(npz_path)
                 
-                # Extract X and MI_results
-                X = data['X']  # Shape: (10000, 2, 3, 32, 32)
+                # Extract data array and MI_results
+                data_array = data[data_key]  # Shape: (10000, 2, 3, 32, 32)
                 MI_results = data['MI_results']  # Get the 3rd value (index 2)
                 true_mi = MI_results[2] if len(MI_results) > 2 else MI_results[0]
                 
                 # Store dataset
                 self.datasets[subdir] = {
-                    'X': X,
+                    data_key: data_array,
                     'true_mi': true_mi,
-                    'n_samples': X.shape[0]
+                    'n_samples': data_array.shape[0],
+                    'data_key': data_key  # Store which key was used
                 }
                 self.true_mi_values[subdir] = true_mi
                 
-                print(f"Loaded {subdir}: {X.shape[0]} samples, True MI = {true_mi:.4f}")
+                print(f"Loaded {subdir}: {data_array.shape[0]} samples, True MI = {true_mi:.4f} (using {data_key})")
     
     def get_dataset(self, subdir_name):
         """Get dataset for a specific subdirectory."""
@@ -63,7 +65,7 @@ def custom_image_batch(dataset_dict, batch_size=64, seed=None):
     Generate a batch of paired images from custom dataset.
     
     Args:
-        dataset_dict: Dictionary with 'X' key containing (n_samples, 2, 3, 32, 32) array
+        dataset_dict: Dictionary with data key ('X' or 'Noise') containing (n_samples, 2, 3, 32, 32) array
         batch_size: Number of samples in batch
         seed: Random seed for reproducibility
     
@@ -73,15 +75,16 @@ def custom_image_batch(dataset_dict, batch_size=64, seed=None):
     if seed is not None:
         np.random.seed(seed)
     
-    X = dataset_dict['X']  # Shape: (n_samples, 2, 3, 32, 32)
-    n_samples = X.shape[0]
+    data_key = dataset_dict.get('data_key', 'X')  # Default to 'X' for backwards compatibility
+    data_array = dataset_dict[data_key]  # Shape: (n_samples, 2, 3, 32, 32)
+    n_samples = data_array.shape[0]
     
     # Randomly sample indices
     indices = np.random.choice(n_samples, batch_size, replace=True)
     
     # Extract X and Y pairs
-    z1 = torch.from_numpy(X[indices, 0, :, :, :]).float()  # X images
-    z2 = torch.from_numpy(X[indices, 1, :, :, :]).float()  # Y images
+    z1 = torch.from_numpy(data_array[indices, 0, :, :, :]).float()  # First pair
+    z2 = torch.from_numpy(data_array[indices, 1, :, :, :]).float()  # Second pair
     
     return z1, z2
 
