@@ -239,13 +239,51 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         print(f"  RMSE: {rmse:.4f}")
         print(f"  MAE: {mae:.4f}")
 
+    # Calculate percentage errors for all estimators and datasets
+    all_percentage_errors = []
+    for estimator_name, estimates in all_estimates.items():
+        percentage_errors = np.abs(estimates - all_true_mi) / np.abs(all_true_mi) * 100
+        all_percentage_errors.append(percentage_errors)
+
+    # Stack and find the maximum percentage error
+    all_percentage_errors = np.vstack(all_percentage_errors)
+    max_error = np.max(all_percentage_errors)
+    print(f"\nAll {len(all_estimates)} estimators fall within {max_error:.2f}% of the true MI across all datasets.")
+
+    # Find the largest absolute error and its percentage
+    max_abs_error = -1
+    max_info = None
+    for estimator_name, estimates in all_estimates.items():
+        abs_errors = np.abs(all_true_mi - estimates)
+        idx = np.argmax(abs_errors)
+        if abs_errors[idx] > max_abs_error:
+            max_abs_error = abs_errors[idx]
+            max_info = {
+                'estimator': estimator_name,
+                'true_mi': all_true_mi[idx],
+                'estimated': estimates[idx],
+                'dataset_idx': idx
+            }
+    if max_info:
+        if max_info['true_mi'] is not None and max_info['estimated'] is not None:
+            true_mi_val = float(max_info['true_mi'])
+            estimated_val = float(max_info['estimated'])
+            percent_error = (true_mi_val - estimated_val) / true_mi_val * 100
+            print(f"\nLargest absolute error: |True MI - Estimated| = {max_abs_error:.4f}")
+            print(f"  Estimator: {max_info['estimator']}")
+            print(f"  Dataset index: {max_info['dataset_idx']}")
+            print(f"  True MI: {true_mi_val:.4f}")
+            print(f"  Estimated MI: {estimated_val:.4f}")
+            print(f"  Percentage error: {percent_error:.2f}%")
+        else:
+            print("\nWarning: Largest error found, but true MI or estimated MI is None.")
+
 if __name__ == "__main__":
     print(f"Loading results from {args.results_dir}")
     results = load_results(args.results_dir)
-    
+
     if not results:
         print("Error: No results found!")
     else:
         print(f"Found results for {len(results)} datasets")
         plot_results(results, args.output_file, args.estimators, args.use_final)
-
