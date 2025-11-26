@@ -7,17 +7,17 @@ import argparse
 # Set matplotlib font sizes
 matplotlib.rcParams.update({
     "font.size": 12,            # Default text size
-    "axes.titlesize": 18,       # Title font size
-    "axes.labelsize": 18,       # X/Y label font size
-    "legend.fontsize": 12,      # Legend font size
-    "xtick.labelsize": 14,      # X tick labels
-    "ytick.labelsize": 14,      # Y tick labels
+    "axes.titlesize": 22,       # Title font size
+    "axes.labelsize": 22,       # X/Y label font size
+    "legend.fontsize": 16,      # Legend font size
+    "xtick.labelsize": 18,      # X tick labels
+    "ytick.labelsize": 18,      # Y tick labels
 })
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--results_dir", type=str, default="results/custom_benchmark", 
+parser.add_argument("--results_dir", type=str, default="results/benchmark_theta_unit_X",
                     help="Directory containing benchmark results")
-parser.add_argument("--output_file", type=str, default="results/custom_benchmark/mi_comparison.pdf",
+parser.add_argument("--output_file", type=str, default="results/benchmark_theta_unit_X/mi_comparison_X.pdf",
                     help="Output file for the plot")
 parser.add_argument("--estimators", type=str, nargs="+", default=None,
                     help="List of estimators to plot (default: all)")
@@ -149,7 +149,8 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     n_cols = 3
     n_rows = (n_estimators + n_cols - 1) // n_cols
     
-    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, 5*n_rows))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(18, 6.5 * n_rows))
+
     if n_estimators == 1:
         axes = [axes]
     else:
@@ -162,7 +163,8 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         
         # Scatter plot
         ax.scatter(all_true_mi, estimates, alpha=0.6, s=50, color=colors[idx], label=estimator_name)
-        
+        # ax.plot(all_true_mi, estimates, linewidth=2.0, marker='o', color=colors[idx], label=estimator_name, alpha=0.6) # Line Plot
+
         # Perfect estimation line (y=x) - use global range
         ax.plot([global_min, global_max], [global_min, global_max], 'r--', alpha=0.5, label='Perfect estimation')
         
@@ -198,14 +200,14 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     fig2, ax2 = plt.subplots(1, 1, figsize=(10, 8))
     
     for idx, (estimator_name, estimates) in enumerate(sorted(all_estimates.items())):
-        ax2.scatter(all_true_mi, estimates, alpha=0.6, s=80, label=estimator_name, 
-                   color=colors[idx], marker='o')
-    
+        ax2.scatter(all_true_mi, estimates, alpha=0.6, s=80, label=estimator_name, color=colors[idx], marker='o')
+        # ax2.plot(all_true_mi, estimates, linewidth=2, label=estimator_name, color=colors[idx], marker='o', alpha=0.6)
+
     # Perfect estimation line
     min_val = min(np.min(all_true_mi), np.min([np.min(est) for est in all_estimates.values()]))
     max_val = max(np.max(all_true_mi), np.max([np.max(est) for est in all_estimates.values()]))
     ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, linewidth=2, label='Perfect estimation')
-    
+
     ax2.set_xlabel('Ground Truth MI')
     ax2.set_ylabel('Estimated MI')
     ax2.set_title('Ground Truth vs Estimated Mutual Information')
@@ -221,6 +223,8 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     combined_png = combined_output.replace('.pdf', '.png')
     plt.savefig(combined_png, dpi=600, bbox_inches='tight')
     print(f"Combined plot saved to {combined_png}")
+
+    plt.show()  # todo: Delete
     
     # Print summary statistics
     print("\n" + "="*60)
