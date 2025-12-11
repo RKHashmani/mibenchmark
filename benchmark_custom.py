@@ -236,6 +236,8 @@ def main():
             estimator_savepath = os.path.join(args.savepath, subdir_name, estimator_name)
             os.makedirs(estimator_savepath, exist_ok=True)
             np.save(os.path.join(estimator_savepath, "mi.npy"), estimates_array)
+            # Save trained critic for downstream analysis (e.g., cosine similarity)
+            torch.save(critic.state_dict(), os.path.join(estimator_savepath, "critic.pth"))
             
             log.info(f'Final average estimate for {estimator_name}: {np.mean(estimates_array):.4f}')
         
@@ -263,4 +265,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
