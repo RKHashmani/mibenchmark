@@ -9,6 +9,7 @@ import torch
 import torch.nn.functional as F
 
 from libs.critics import set_critic
+from libs.bounds import estimate_mutual_information
 
 
 def parse_args():
@@ -66,6 +67,16 @@ def parse_args():
         action="store_true",
         help="If set, also save cosine arrays as <dataset>_cosines.npy alongside plots.",
     )
+    parser.add_argument(
+        "--use_final",
+        action="store_true",
+        help="If set, use the mean of the last 1000 MI steps for the true-vs-estimated plot; otherwise full mean.",
+    )
+    parser.add_argument(
+        "--recompute_mi",
+        action="store_true",
+        help="If set, recompute MI on the saved critic over the npz data (batched InfoNCE) instead of reading mi.npy.",
+    )
     return parser.parse_args()
 
 
@@ -82,7 +93,14 @@ def load_npz(npz_path: str, data_key: str) -> Tuple[np.ndarray, np.ndarray]:
         raise KeyError(f"data_key '{data_key}' not found in {npz_path}. Keys: {list(data.keys())}")
     if "PMI" not in data:
         raise KeyError(f"'PMI' not found in {npz_path}. Keys: {list(data.keys())}")
-    return data[data_key], data["PMI"]
+    mi_truth = None
+    if "MI_results" in data:
+        mi_arr = data["MI_results"]
+        if len(mi_arr) > 2:
+            mi_truth = float(mi_arr[2])
+        else:
+            mi_truth = float(mi_arr[0])
+    return data[data_key], data["PMI"], mi_truth
 
 
 def build_critic(args, input_dim: int, device: str):
@@ -143,10 +161,13 @@ def main():
     if not subdirs:
         raise RuntimeError(f"No dataset subdirectories found in {args.dataset_dir}")
 
+    true_mis = []
+    est_mis = []
+
     for subdir in subdirs:
         dataset_path = os.path.join(args.dataset_dir, subdir)
         npz_path = find_npz(dataset_path)
-        data_array, pmi = load_npz(npz_path, args.data_key)
+        data_array, pmi, mi_truth = load_npz(npz_path, args.data_key)
         if data_array.shape[0] != pmi.shape[0]:
             raise ValueError(f"[{subdir}] PMI length {pmi.shape[0]} does not match data size {data_array.shape[0]}.")
 
@@ -170,6 +191,70 @@ def main():
 
         mean_cos = float(cosines.mean())
         print(f"[{subdir}] saved plot -> {plot_path}; mean cosine: {mean_cos:.4f}")
+
+        # Collect true vs estimated MI if available
+        if mi_truth is not None:
+            if args.recompute_mi:
+                # Evaluate MI on the saved critic over the dataset in batches (no gradients)
+                mi_batches = []
+                critic.eval()
+                with torch.no_grad():
+                    for start in range(0, data_array.shape[0], args.batch_size):
+                        end = min(start + args.batch_size, data_array.shape[0])
+                        z1 = torch.from_numpy(data_array[start:end, 0]).float().to(device)
+                        z2 = torch.from_numpy(data_array[start:end, 1]).float().to(device)
+                        x = z1.view(z1.size(0), -1)
+                        y = z2.view(z2.size(0), -1)
+                        mi_val = estimate_mutual_information(args.estimator, x, y, critic)
+                        mi_batches.append(float(mi_val.item()))
+                estimate = float(np.mean(mi_batches))
+            else:
+                mi_file = os.path.join(args.results_dir, subdir, args.estimator, "mi.npy")
+                if os.path.exists(mi_file):
+                    mi_estimates = np.load(mi_file)
+                    estimate = (
+                        np.mean(mi_estimates[-1000:])
+                        if args.use_final and mi_estimates.shape[0] > 1000
+                        else np.mean(mi_estimates)
+                    )
+                else:
+                    estimate = None
+
+            if estimate is not None:
+                true_mis.append(mi_truth)
+                est_mis.append(estimate)
+
+    # Plot aggregated true vs estimated MI
+    if true_mis and est_mis:
+        true_mis_arr = np.array(true_mis)
+        est_mis_arr = np.array(est_mis)
+        idx = np.argsort(true_mis_arr)
+        true_mis_arr = true_mis_arr[idx]
+        est_mis_arr = est_mis_arr[idx]
+
+        min_val = min(true_mis_arr.min(), est_mis_arr.min())
+        max_val = max(true_mis_arr.max(), est_mis_arr.max())
+        margin = (max_val - min_val) * 0.05
+        min_val -= margin
+        max_val += margin
+
+        plt.figure(figsize=(8, 6))
+        plt.scatter(true_mis_arr, est_mis_arr, s=60, alpha=0.7, label=args.estimator)
+        plt.plot([min_val, max_val], [min_val, max_val], "r--", alpha=0.6, label="Perfect estimation")
+        corr = np.corrcoef(true_mis_arr, est_mis_arr)[0, 1]
+        rmse = np.sqrt(np.mean((true_mis_arr - est_mis_arr) ** 2))
+        plt.xlabel("Ground Truth MI")
+        plt.ylabel("Estimated MI")
+        plt.title(f"True vs Estimated MI ({args.estimator})\nCorr: {corr:.3f}, RMSE: {rmse:.4f}")
+        plt.xlim(min_val, max_val)
+        plt.ylim(min_val, max_val)
+        plt.grid(alpha=0.3)
+        plt.legend()
+        plt.tight_layout()
+        tv_plot = os.path.join(args.output_dir, f"true_vs_estimated_{args.estimator}.png")
+        plt.savefig(tv_plot, dpi=300)
+        plt.close()
+        print(f"[aggregate] saved true-vs-estimated plot -> {tv_plot}")
 
 
 if __name__ == "__main__":
