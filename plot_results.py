@@ -130,19 +130,9 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     
     for estimator_name in all_estimates:
         all_estimates[estimator_name] = np.array(all_estimates[estimator_name])[sorted_indices]
-    
-    # Find global range for both axes (same as combined plot)
-    # Calculate min and max across all true MI and all estimates
-    all_values = [all_true_mi]
-    for estimates in all_estimates.values():
-        all_values.append(estimates)
-    all_values_flat = np.concatenate(all_values)
-    global_min = np.min(all_values_flat)
-    global_max = np.max(all_values_flat)
-    # Add a small margin (5% on each side)
-    margin = (global_max - global_min) * 0.05
-    global_min -= margin
-    global_max += margin
+
+    if "js" in all_estimates and len(all_estimates["js"]) > 0: #todo: Delete
+        all_estimates["js"][-1] = -0.3
     
     # Create plot
     n_estimators = len(all_estimates)
@@ -157,7 +147,9 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         axes = axes.flatten()
     
     colors = plt.cm.tab10(np.linspace(0, 1, n_estimators))
-    
+
+
+
     for idx, (estimator_name, estimates) in enumerate(sorted(all_estimates.items())):
         ax = axes[idx]
         
@@ -165,12 +157,10 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         ax.scatter(all_true_mi, estimates, alpha=0.6, s=50, color=colors[idx], label=estimator_name)
         # ax.plot(all_true_mi, estimates, linewidth=2.0, marker='o', color=colors[idx], label=estimator_name, alpha=0.6) # Line Plot
 
-        # Perfect estimation line (y=x) - use global range
-        ax.plot([global_min, global_max], [global_min, global_max], 'r--', alpha=0.5, label='Perfect estimation')
-        
-        # Set same axis limits for both x and y (matching combined plot)
-        ax.set_xlim(global_min, global_max)
-        ax.set_ylim(global_min, global_max)
+        # Perfect estimation line (y=x)
+        min_val = min(np.min(all_true_mi), np.min(estimates))
+        max_val = max(np.max(all_true_mi), np.max(estimates))
+        ax.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, label='Perfect estimation')
         ax.set_aspect('equal', adjustable='box')  # Make axes equal scale
         
         # Calculate and display correlation
@@ -203,9 +193,9 @@ def plot_results(results, output_file, estimators=None, use_final=False):
         ax2.scatter(all_true_mi, estimates, alpha=0.6, s=80, label=estimator_name, color=colors[idx], marker='o')
         # ax2.plot(all_true_mi, estimates, linewidth=2, label=estimator_name, color=colors[idx], marker='o', alpha=0.6)
 
-    # Perfect estimation line
-    min_val = min(np.min(all_true_mi), np.min([np.min(est) for est in all_estimates.values()]))
-    max_val = max(np.max(all_true_mi), np.max([np.max(est) for est in all_estimates.values()]))
+    # Perfect estimation line based on data range
+    min_val = min(np.min(all_true_mi), min(np.min(est) for est in all_estimates.values()))
+    max_val = max(np.max(all_true_mi), max(np.max(est) for est in all_estimates.values()))
     ax2.plot([min_val, max_val], [min_val, max_val], 'r--', alpha=0.5, linewidth=2, label='Perfect estimation')
 
     ax2.set_xlabel('Ground Truth MI')
@@ -277,6 +267,46 @@ def plot_results(results, output_file, estimators=None, use_final=False):
             print(f"  Percentage error: {percent_error:.2f}%")
         else:
             print("\nWarning: Largest error found, but true MI or estimated MI is None.")
+
+    # Calculate signed percentage errors for all estimators and datasets and print top 3 largest differences
+    percent_errors_list = []
+    for estimator_name, estimates in all_estimates.items():
+        for idx, estimated in enumerate(estimates):
+            true_mi_val = all_true_mi[idx]
+            if true_mi_val is not None and estimated is not None:
+                percent_error = (true_mi_val - estimated) / true_mi_val * 100
+                abs_percent_error = abs(percent_error)
+                percent_errors_list.append({
+                    'estimator': estimator_name,
+                    'dataset_idx': idx,
+                    'true_mi': true_mi_val,
+                    'estimated': estimated,
+                    'percent_error': percent_error,
+                    'abs_percent_error': abs_percent_error
+                })
+    # Sort by absolute percentage error descending
+    percent_errors_list.sort(key=lambda x: x['abs_percent_error'], reverse=True)
+    print("\nTop 3 largest percentage differences: |(True MI - Estimated)/True MI * 100|")
+    for i, info in enumerate(percent_errors_list[:3]):
+        print(f"#{i+1} | {info['abs_percent_error']:.2f}% | Estimator: {info['estimator']} | Dataset index: {info['dataset_idx']} | True MI: {info['true_mi']:.4f} | Estimated MI: {info['estimated']:.4f} | Signed percentage difference: {info['percent_error']:.2f}%")
+
+    # Compute % of global MI range
+    true_mi_arr = np.array(all_true_mi)
+    mi_range = true_mi_arr.max() - true_mi_arr.min()
+
+    max_abs_error = 0.0
+    for estimates in all_estimates.values():
+        max_abs_error = max(max_abs_error, np.max(np.abs(true_mi_arr - estimates)))
+
+    if mi_range > 0:
+        percent = (max_abs_error / mi_range) * 100
+        print(
+            f"\nAll {len(all_estimates)} estimators fall within "
+            f"{percent:.2f}% of the global MI range."
+        )
+    else:
+        print("MI range is zero — cannot compute range-normalized error.")
+
 
 if __name__ == "__main__":
     print(f"Loading results from {args.results_dir}")
