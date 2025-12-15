@@ -163,6 +163,8 @@ def main():
 
     true_mis = []
     est_mis = []
+    first_overlay = None  # (subdir, pmi, cosines, mi_truth)
+    last_overlay = None   # (subdir, pmi, cosines, mi_truth)
 
     for subdir in subdirs:
         dataset_path = os.path.join(args.dataset_dir, subdir)
@@ -190,6 +192,10 @@ def main():
 
         plot_path = os.path.join(args.output_dir, f"{subdir}_pmi_cosine.png")
         plot_scatter(pmi, cosines, plot_path, title=title)
+
+        if first_overlay is None:
+            first_overlay = (subdir, pmi, cosines, mi_truth)
+        last_overlay = (subdir, pmi, cosines, mi_truth)
 
         if args.save_numpy:
             np.save(os.path.join(args.output_dir, f"{subdir}_cosines.npy"), cosines)
@@ -228,6 +234,27 @@ def main():
             if estimate is not None:
                 true_mis.append(mi_truth)
                 est_mis.append(estimate)
+
+    if first_overlay is not None and last_overlay is not None:
+        first_name, first_pmi, first_cos, first_mi = first_overlay
+        last_name, last_pmi, last_cos, last_mi = last_overlay
+
+        def _mi_str(val):
+            return "N/A" if val is None else f"{val:.4f}"
+
+        plt.figure(figsize=(7, 5))
+        plt.scatter(first_pmi, first_cos, s=4, alpha=0.3, label=f"I={_mi_str(first_mi)}")
+        plt.scatter(last_pmi, last_cos, s=4, alpha=0.3, label=f"I={_mi_str(last_mi)}")
+        plt.xlabel("PMI")
+        plt.ylabel("Cosine similarity of g(x) and h(y)")
+        plt.title("PMI vs Cosine Similarity Overlay")
+        plt.grid(alpha=0.3)
+        plt.legend(loc="best")
+        plt.tight_layout()
+        overlay_path = os.path.join(args.output_dir, "first_vs_last_pmi_cosine_overlay.png")
+        plt.savefig(overlay_path, dpi=200)
+        plt.close()
+        print(f"[overlay] saved first-vs-last overlay plot -> {overlay_path}")
 
     # Plot aggregated true vs estimated MI
     if true_mis and est_mis:
