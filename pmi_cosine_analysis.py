@@ -183,8 +183,13 @@ def main():
 
         cosines = compute_cosines(critic, data_array, args.batch_size, device)
 
+        if mi_truth is None:
+            title = "PMI vs InfoNCE Cosine Similarity (I(X1;X2) = N/A)"
+        else:
+            title = f"PMI vs InfoNCE Cosine Similarity (I(X1;X2) = {mi_truth:.4f})"
+
         plot_path = os.path.join(args.output_dir, f"{subdir}_pmi_cosine.png")
-        plot_scatter(pmi, cosines, plot_path, title=f"{subdir} (estimator={args.estimator})")
+        plot_scatter(pmi, cosines, plot_path, title=title)
 
         if args.save_numpy:
             np.save(os.path.join(args.output_dir, f"{subdir}_cosines.npy"), cosines)
