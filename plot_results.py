@@ -131,8 +131,8 @@ def plot_results(results, output_file, estimators=None, use_final=False):
     for estimator_name in all_estimates:
         all_estimates[estimator_name] = np.array(all_estimates[estimator_name])[sorted_indices]
 
-    if "js" in all_estimates and len(all_estimates["js"]) > 0: #todo: Delete
-        all_estimates["js"][-1] = -0.3
+    # if "js" in all_estimates and len(all_estimates["js"]) > 0: #todo: Delete
+    #     all_estimates["js"][-1] = -0.3
     
     # Create plot
     n_estimators = len(all_estimates)
