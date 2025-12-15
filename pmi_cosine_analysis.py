@@ -129,9 +129,8 @@ def compute_cosines(critic, data_array: np.ndarray, batch_size: int, device: str
             y = z2.view(z2.size(0), -1)
             gx = critic._g(x)
             hy = critic._h(y)
-            gx = F.normalize(gx, dim=1)
-            hy = F.normalize(hy, dim=1)
-            cos_batch = (gx * hy).sum(dim=1)
+            cos = torch.nn.CosineSimilarity(dim=1, eps=1e-6)
+            cos_batch = cos(gx, hy)
             cosines.append(cos_batch.cpu().numpy())
     return np.concatenate(cosines)
 
